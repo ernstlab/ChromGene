@@ -8,6 +8,7 @@ import os
 import tqdm
 import numpy as np
 import pandas as pd
+from smart_open import open
 
 
 class Gene:
@@ -47,13 +48,6 @@ def str2bool(x):
         raise argparse.ArgumentTypeError('Boolean value expected.')
 
 
-def gopen(file):
-    ### Check if file is gzipped by extension. If so, open as binary for reading. Else, text.
-    if file[-3:] == '.gz':
-        return gzip.open(file,'rb')
-    return open(file,'rU')
-
-
 def partition(num_elts, norm=1.):
     ### returns a random vector of length specified with sum of 1
     x = np.empty(num_elts)
@@ -80,7 +74,7 @@ def even_subsample(len_from, len_to):
 def read_gtf(gtf_file):
     ### Reads GTF into a list of genes
     gene_list = []
-    with gopen(gtf_file) as infile:
+    with open(gtf_file) as infile:
         for line in infile:
             field = line.strip().split('\t')
             if (field[2] != 'exon') or ('_' in field[0]) or ('_dup' in field[-1]) or (field[0] == 'chrY'):
@@ -96,7 +90,7 @@ def read_gtf(gtf_file):
 def read_bed(bed_file):
     ### Reads BED into a list of genes
     gene_list = []
-    with gopen(bed_file) as infile:
+    with open(bed_file) as infile:
         for line in infile:
             chrom, start, stop, gene_name, score, strand = line.strip().split('\t')
             if chrom == 'chrY':
@@ -119,7 +113,7 @@ def generate_emission_mat(args, features):
     # loop over a binary emission files, then take each position and assign it to a state.
     for file in os.listdir(args.out_dir):
         if 'chr22_gene_binary.txt' in file:
-            with gopen(args.out_dir + file) as infile:
+            with open(args.out_dir + file) as infile:
                 # pass through first two lines
                 infile.readline()
                 infile.readline()
@@ -193,12 +187,11 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('annotation', help='annotation file of genes to use to generate binary marks (gtf, bed)')
     parser.add_argument('mark_files', help='binary calls of histone marks via ChromHMM', nargs='+')
-    parser.add_argument('--num_states', help='number of states in each gene mixture', default=5, type=int)
-    parser.add_argument('--num_mixtures', help='number of gene mixtures', default=5, type=int)
+    parser.add_argument('--num_states', help='number of states in each gene mixture', default=3, type=int)
+    parser.add_argument('--num_mixtures', help='number of gene mixtures', default=12, type=int)
     parser.add_argument('--binary', help='output binary histone mark calls', default=True, type=str2bool)
     parser.add_argument('--model_param', help='output model parameters', default=True, type=str2bool)
     parser.add_argument('--resolution', help='resolution of binarized histone mark features', type=int, default=200)
-    # parser.add_argument('--max_intron_len', help='maximum intron length to allow', default=200000, type=int)
     parser.add_argument('--subsample', help='percentage to subsample for seeding emission parameters', default=1., type=float)
     parser.add_argument('--window', help='bases to go in each of upstream/downstream of gene', type=int, default=2000)
     parser.add_argument('--output_tss', help='output emissions at the TSS', default=False, action='store_true')
@@ -230,7 +223,7 @@ def main():
 
     for file in os.listdir(args.out_dir):
         if '_gene_binary.txt' in file:
-            with gopen(args.out_dir + file) as infile:
+            with open(args.out_dir + file) as infile:
                 # read in cell type, chromosome, 
                 [cell, chromosome] = infile.readline().split()
                 features = infile.readline().split()
@@ -244,7 +237,7 @@ def main():
         sys.stderr.write('Reading binary calls for histone marks\n')
         hist_dict = {}
         for mark_file in args.mark_files:
-            with gopen(mark_file) as infile:
+            with open(mark_file) as infile:
                 if args.verbose:
                     print(f"{mark_file}...'")
 
