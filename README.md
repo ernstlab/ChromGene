@@ -6,7 +6,7 @@ ChromGene is a method for annotating genomic intervals by modeling them as arisi
 ## Usage
 ChromGene can be applied to any genomic intervals where histone marks and DNA accessibility tracks are expected to vary across the genome by modifying the provided code.
 
-We applied ChromGene to a set of 19,919 protein-coding genes across 127 imputed epigenomes (Frankish et al. 2018, Roadmap Epigenomics Consortium et al. 2015). The full set of annotations is reported in this repository, and their descriptions and various metrics are reported in Supp. Table 1. Along with the annotations, we have included code to generate input files to use on top of ChromHMM (Ernst and Kellis, 2015), and to generate a ChromGene assignment matrix.
+We applied ChromGene to a set of 19,919 protein-coding genes across 127 imputed epigenomes (Frankish et al. 2018, Roadmap Epigenomics Consortium et al. 2015). The full set of annotations is reported in this repository, and their descriptions and various metrics are reported in Supp. Table 1. Along with the annotations, we have included code to generate input files to use on top of ChromHMM (Ernst and Kellis, 2012), and to generate a ChromGene assignment matrix.
 
 Usage requires only basic Python packages, which can be easily installed with Anaconda or pip.
 
@@ -27,7 +27,7 @@ mark_files [ChromHMM chromatin mark binary call file paths] \
 --verbose [verbose; default: False]
 ```
 
-Second, run ChromHMM on the binary files, passing the model file and binaries deposited into `out_dir`. The argument `total_num_states` should be (num_mixtures * num_states) + 1
+Second, run ChromHMM on the binary files, passing the model file and binaries deposited into `out_dir`. The argument `total_num_states` should be (num_mixtures * num_states) + 1. The latest version of ChromHMM can be downloaded at https://ernstlab.biolchem.ucla.edu/ChromHMM/. 
 `java -jar -mx24000M  path/to/ChromHMM.jar LearnModel -b 200 -d -1 -gzip -holdcolumnorder -holdroworder -init load -m path_to_model_file/model_n.txt -n 100 -lowmem -printstatebyline ./binaries/chromgene_binaries ./out_dir total_num_states hg19`
 
 Finally, create the ChromGene mixture assignments. This will create .npy files and .txt files
@@ -37,3 +37,6 @@ python chromgene_posteriors_to_mixtures.py
 --states_per_mixture [number of states per mixture; default: 4]
 --out_dir [directory in which to save data; default: '.']
 ```
+
+## Annotations
+We have generated ChromGene annotations for 127 cell types across 19,919 protein-coding genes using a single, unified model trained on 11 imputed histone marks and DNase. We have included these files in the main repository in the files `chromgene_assignments_eids.tsv.gz` for columns corresponding to EIDs, and the longer cell type name in `chromgene_assignments_cell_type_names.tsv.gz`. The correspondence between these two is available through Roadmap at https://docs.google.com/spreadsheets/d/1yikGx4MsO9Ei36b64yOy9Vb6oPC5IBGlFbYEt-N6gOM/edit#gid=15.
