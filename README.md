@@ -40,3 +40,62 @@ python chromgene_posteriors_to_mixtures.py
 
 ## Annotations
 We have generated ChromGene annotations for 127 cell types across 19,919 protein-coding genes using a single, unified model trained on 11 imputed histone marks and DNase. We have included these files in the main repository in the files `chromgene_assignments_eids.tsv.gz` for columns corresponding to EIDs, and the longer cell type name in `chromgene_assignments_cell_type_names.tsv.gz`. The correspondence between these two is available through Roadmap at https://docs.google.com/spreadsheets/d/1yikGx4MsO9Ei36b64yOy9Vb6oPC5IBGlFbYEt-N6gOM/edit#gid=15.
+
+
+# Legends for additional supplementary files
+Supplementary Table 1:
+Mixture enrichments tab – The columns on this tab after the mixture colors are as follows:
+Mnemonic: short identifying name of ChromGene annotation
+Description: short description of ChromGene annotation
+Overall percentage: percentage of gene-cell type combinations assigned to annotation
+Median expression: median expression (RPKM) of genes assigned to annotation across 56 cell types with expression [1]
+Median length (kb): median length (kb) of genes assigned to annotation across all cell types, not including flanking regions
+Percentage of high-pLI genes (pLI > 0.9): percentage of genes across cell types that have a pLI score > 0.9
+Contingency table diagonal / confusion matrix diagonal: percentage consistency of annotations across non-replicate cell types divided by percentage consistency of annotations across replicate cell types
+Cell type specificity: 1 - (contingency table diagonal / confusion matrix diagonal), a metric of cell type specificity
+
+### Housekeeping gene: gene annotated as housekeeping [35]
+Housekeeping gene percentage: percentage of gene-cell type combinations annotated as a housekeeping gene
+Housekeeping gene enrichment: fold enrichment of housekeeping genes compared to overall percentage
+Housekeeping gene log2 enrichment: log2 fold enrichment of housekeeping genes
+Housekeeping gene enrichment median enrichment p-value: median p-value of housekeeping gene enrichment across cell types
+
+### Constitutively unexpressed gene: gene that has RPKM < 1 across 56 cell types with expression [1]
+Constitutively unexpressed gene percentage: percentage of gene-cell type combinations annotated as constitutively unexpressed 
+Constitutively unexpressed gene enrichment: fold enrichment of constitutively unexpressed genes compared to overall percentage
+Constitutively unexpressed gene log2 enrichment: log2 fold enrichment of constitutively unexpressed genes
+Constitutively unexpressed gene median enrichment p-value: median p-value of constitutively unexpressed gene enrichment across cell types
+
+### Constitutively expressed gene: gene that has RPKM > 1 across 56 cell types with expression [1]
+Constitutively expressed gene percentage: percentage of gene-cell type combinations annotated as constitutively expressed 
+Constitutively expressed gene enrichment: fold enrichment of constitutively expressed genes compared to overall percentage
+Constitutively expressed gene log2 enrichment: log2 fold enrichment of constitutively expressed genes
+Constitutively expressed gene median enrichment p-value: median p-value of constitutively expressed gene enrichment across cell types
+
+### Olfactory gene: gene annotated as olfactory [30]
+Olfactory gene percentage: percentage of gene / cell type combinations annotated as olfactory 
+Olfactory gene enrichment: fold enrichment of olfactory genes compared to overall percentage
+Olfactory gene log2 enrichment: log2 fold enrichment of olfactory genes
+Olfactory gene median enrichment p-value: median p-value of olfactory gene enrichment across cell types
+
+### ZNF gene: gene starts with "ZNF"
+ZNF gene percentage: percentage of gene / cell type combinations annotated as ZNF 
+ZNF gene enrichment: fold enrichment of ZNF genes compared to overall percentage
+ZNF gene log2 enrichment: log2 fold enrichment of ZNF genes
+ZNF gene median enrichment p-value: median p-value of ZNF gene enrichment across cell types
+
+### Cancer and BP GO terms
+Cancer gene sets enriched (adj p < 0.01): the number of cancer gene sets enriched across all cell types for given annotation
+Cancer gene sets enriched percentage: the percentage of cancer gene sets enriched across all cell types for given annotation
+BP GO terms enriched (adj p < 0.01): the number of 'Biological Process' GO term gene sets enriched across all cell types for given annotation
+BP GO terms enriched percentage: the percentage of 'Biological Process' GO term gene sets enriched across all cell types for given annotation
+
+Color (hex): hex color for ChromGene annotation
+Matplotlib color name: color used in matplotlib for ChromGene annotation [https://xkcd.com/color/rgb/]
+
+State emissions and enrichments tab – The first column gives a color and number for each mixture. The second column gives the mixture mnemonic. The third column gives a number to each individual state of the mixture. The next 12 columns give the emission probabilities for each chromatin mark as indicated. The next two columns gives the maximum and minimum emission probabilities represented as percentages. The next column gives the enrichment of the individual states for annotated TSS. Individual states within each mixture are ordered in decreasing value of this enrichment. The next column gives the initial probability of starting in the state overall. The last column gives the initial probability of the state given the mixture.
+
+Transition Probabilities tab – This tab shows the transition probability indicating the probability when in the state of the row of transitioning to the state of the column. Probabilities are shown for individual states of the model which are ordered and colored based on the mixture to which they belong as indicated.
+
+Supplementary Data: ChromGene annotations
+This is a gzip of a tab delimited file containing the ChromGene annotations for the 127 cell types. Each row after the header row corresponds to one gene. The first five columns from left to right are the chromosome of the gene, the left-most coordinate of the gene, the right-most coordinate of the gene, the gene symbol, and strand of the gene. This is based on hg19 and ENSEMBL v65/GENCODE v10. The remaining columns correspond to different cell types for which ChromGene annotations are reported as indicated by the names in the header.
