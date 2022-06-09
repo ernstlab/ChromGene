@@ -15,8 +15,8 @@ First, create the input binary files to use on top of ChromHMM. This will requir
 python generate_chromgene_input_files.py \
 annotation [path to bed or gtf file] \
 mark_files [ChromHMM chromatin mark binary call file paths] \
---num_states [number of states per mixture; default: 3] \
---num_mixtures [number of mixtures; default: 12] \
+--num_states [number of states per mixture component; default: 3] \
+--num_mixtures [number of mixtures components; default: 12] \
 --binary [whether to output binary files, can be set to False for testing; default: True] \
 --model_param [whether to output model param files, can be set to False for testing; default: True] \
 --resolution [resolution of data to output; default: 200] \
@@ -27,7 +27,7 @@ mark_files [ChromHMM chromatin mark binary call file paths] \
 --verbose [verbose; default: False]
 ```
 
-Second, run ChromHMM on the binary files, passing the model file and binaries deposited into `out_dir`. The argument `total_num_states` should be (num_mixtures * num_states) + 1. The latest version of ChromHMM can be downloaded at https://ernstlab.biolchem.ucla.edu/ChromHMM/. The following command and flags should be used:
+Second, run ChromHMM on the binary files, passing the model file and binaries deposited into `out_dir`. The argument `total_num_states` should be (num_mixture components * num_states) + 1. The latest version of ChromHMM can be downloaded at https://ernstlab.biolchem.ucla.edu/ChromHMM/. The following command and flags should be used:
 ```
 java -jar -mx24000M  path/to/ChromHMM.jar LearnModel \
 -b 200 \
