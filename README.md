@@ -27,21 +27,21 @@ mark_files [ChromHMM chromatin mark binary call file paths] \
 --verbose [verbose; default: False]
 ```
 
-Second, run ChromHMM on the binary files, passing the model file and binaries deposited into `out_dir`. The argument `total_num_states` should be (num_mixture components * num_states) + 1. The latest version of ChromHMM can be downloaded at https://ernstlab.biolchem.ucla.edu/ChromHMM/. The following command and flags should be used:
+Second, run ChromHMM on the binary files, passing the model file and binaries deposited into `out_dir`. The argument `total_num_states` should be (num_mixture components * num_states) + 1. The latest version of ChromHMM can be downloaded at https://ernstlab.biolchem.ucla.edu/ChromHMM/. The following command and flags should be used (modifiable arguments are followed by a # comment):
 ```
 java -jar -mx24000M  path/to/ChromHMM.jar LearnModel \
--b 200 \
--d -1 \
+-b 200 \  # The resolution of the data. 200 was used here in concordance with (Roadmap Epigenomics Consortium, 2015).
+-d -1 \  # This should be set to a positive value if not sampling chromosome data files (-n). Default: 0.001.
 -gzip \
 -scalebeta \
 -holdcolumnorder \
 -holdroworder \
 -init load \
 -m path_to_model_file/model_total_num_states.txt \
--n 100 \
+-n 100 \  # The number of chromosome data files to sample for each training iteration. If using small datasets, this argument can be omitted.
 -e 0 \
 -t 0 \
--p 16 \
+-p 16 \  # The number of processors to use. Can change this depending on the machine the model is trained on.
 -lowmem \
 -printstatebyline \
 -nobrowser \
