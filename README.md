@@ -52,11 +52,11 @@ total_num_states \
 assembly
 ```
 
-Finally, create the ChromGene mixture assignments. This will create .npy files and .txt files
+Finally, create the ChromGene component assignments. This will create .npy files and .txt files
 ```
 python chromgene_posteriors_to_mixtures.py
 --segmentation_dir [directory with segmentation files; default: '.']
---states_per_mixture [number of states per mixture; default: 4]
+--states_per_mixture [number of states per mixture component; default: 4]
 --out_dir [directory in which to save data; default: '.']
 ```
 
