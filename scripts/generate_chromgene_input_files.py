@@ -210,7 +210,7 @@ def main():
     ############################################################################################
 
     sys.stderr.write('Reading annotation file...\n')
-    if '.gtf' in args.annotation
+    if '.gtf' in args.annotation:
         gene_list = read_gtf(args.annotation)
     elif ".bed" in args.annotation:
          gene_list = read_bed(args.annotation)
@@ -262,9 +262,9 @@ def main():
         outfile_ID_dict = {}
         for chrom in ['chr'+str(k) for k in range(1,23)] + ['chrX']:
             outfile_dict[chrom] = gzip.open(args.out_dir + cell + '_' + chrom + '_gene_binary.txt.gz','wb')
-            outfile_dict[chrom].write(cell + '\t' + chrom + '\n')
-            outfile_dict[chrom].write('\t'.join(features + ['dummy']) + '\n')
-            outfile_dict[chrom].write('\t'.join(['0'] * (num_features) + ['1'] ) + '\n')
+            outfile_dict[chrom].write(f"{cell}\t{chrom}\n".encode())
+            outfile_dict[chrom].write(('\t'.join(features + ['dummy']) + '\n').encode())
+            outfile_dict[chrom].write(('\t'.join(['0'] * (num_features) + ['1'] ) + '\n').encode())
             outfile_ID_dict[chrom] = gzip.open(args.out_dir + chrom + '_ID.txt.gz','wb')
 
         # we generate the matrix on the fly and print it
@@ -280,24 +280,24 @@ def main():
                 if gene.strand == '+':
                     # Print the gene's histone mark vales
                     for line in np.array(hist_dict[gene.chromosome][left_idx:right_idx]):
-                        outfile_dict[gene.chromosome].write('\t'.join([str(int(k)) for k in line] + ['0']) + '\n')
-                    outfile_ID_dict[gene.chromosome].write('\t'.join(
+                        outfile_dict[gene.chromosome].write(('\t'.join([str(int(k)) for k in line] + ['0']) + '\n').encode())
+                    outfile_ID_dict[gene.chromosome].write(('\t'.join(
                         [gene.name, gene.chromosome, str(gene.left), str(gene.right), gene.strand]
-                    ) + '\n')
+                    ) + '\n').encode())
 
                 # If the strand is negative, have to use 'right_pos' instead as start of gene
                 elif gene.strand == '-':
                     # Print the gene's histone mark vales
                     for line in np.array(hist_dict[gene.chromosome][right_idx:left_idx:-1]):
-                        outfile_dict[gene.chromosome].write('\t'.join([str(int(k)) for k in line] + ['0']) + '\n')
-                    outfile_ID_dict[gene.chromosome].write('\t'.join(
+                        outfile_dict[gene.chromosome].write(('\t'.join([str(int(k)) for k in line] + ['0']) + '\n').encode())
+                    outfile_ID_dict[gene.chromosome].write(('\t'.join(
                         [gene.name, gene.chromosome, str(gene.left), str(gene.right), gene.strand]
-                    ) + '\n')
+                    ) + '\n').encode())
                 else:
                     raise ValueError(f"Invalid strand: {gene.strand}")
 
                 # Print a 1 for the dummy, then 0s for the rest of the values
-                outfile_dict[gene.chromosome].write('\t'.join(['0'] * (num_features) + ['1'] ) + '\n')
+                outfile_dict[gene.chromosome].write(('\t'.join(['0'] * (num_features) + ['1'] ) + '\n').encode())
 
         # Close all files
         for file in outfile_dict:
@@ -310,9 +310,9 @@ def main():
         outfile_ID_dict = {}
         for chrom in ['chr'+str(k) for k in range(1,23)] + ['chrX']:
             outfile_dict[chrom] = gzip.open(args.out_dir + cell + '_' + chrom + '_tss_binary.txt.gz','wb')
-            outfile_dict[chrom].write(cell + '\t' + chrom + '\n')
-            outfile_dict[chrom].write('\t'.join(features + ['dummy']) + '\n')
-            outfile_dict[chrom].write('\t'.join(['0'] * (num_features) + ['1'] ) + '\n')
+            outfile_dict[chrom].write((cell + '\t' + chrom + '\n').encode())
+            outfile_dict[chrom].write(('\t'.join(features + ['dummy']) + '\n').encode())
+            outfile_dict[chrom].write(('\t'.join(['0'] * (num_features) + ['1'] ) + '\n').encode())
             outfile_ID_dict[chrom] = gzip.open(args.out_dir + chrom + '_ID.txt.gz','wb')
 
         # we generate the matrix on the fly and print it
@@ -324,10 +324,10 @@ def main():
                 tss_idx = gene.get_tss_idx()
 
                 line = np.array(hist_dict[gene.chromosome][tss_idx])
-                outfile_dict[gene.chromosome].write('\t'.join([str(int(k)) for k in line] + ['0']) + '\n')
+                outfile_dict[gene.chromosome].write(('\t'.join([str(int(k)) for k in line] + ['0']) + '\n').encode())
 
                 # Print a 1 for the dummy, then 0s for the rest of the values
-                outfile_dict[gene.chromosome].write('\t'.join(['0'] * (num_features) + ['1'] ) + '\n')
+                outfile_dict[gene.chromosome].write(('\t'.join(['0'] * (num_features) + ['1'] ) + '\n').encode())
 
         # Close all files
         for file in outfile_dict:
