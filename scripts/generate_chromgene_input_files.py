@@ -18,6 +18,7 @@ class Gene:
         self.right = int(right)
         self.strand = strand
         self.name = name
+        self.exons = []
 
     def add_exon(self, start, end):
         # adds exon to list of exons and updates left-most and right-most coordinates
@@ -36,16 +37,6 @@ class Gene:
         else:
             assert self.strand == "-"
             return int(self.right / resolution)
-
-
-def str2bool(x):
-    # Useful for parsing boolean arguments in argparse
-    if x.lower() in ('yes', 'true', 't', 'y', '1'):
-        return True
-    elif x.lower() in ('no', 'false', 'f', 'n', '0'):
-        return False
-    else:
-        raise argparse.ArgumentTypeError('Boolean value expected.')
 
 
 def partition(num_elts, norm=1.):
@@ -186,16 +177,16 @@ def main():
 
     parser = argparse.ArgumentParser()
     parser.add_argument('annotation', help='annotation file of genes to use to generate binary marks (gtf, bed)')
-    parser.add_argument('mark_files', help='binary calls of histone marks via ChromHMM', nargs='+')
-    parser.add_argument('--num_states', help='number of states in each gene mixture', default=3, type=int)
-    parser.add_argument('--num_mixtures', help='number of gene mixtures', default=12, type=int)
-    parser.add_argument('--binary', help='output binary histone mark calls', default=True, type=str2bool)
-    parser.add_argument('--model_param', help='output model parameters', default=True, type=str2bool)
+    parser.add_argument('mark-files', help='binary calls of histone marks via ChromHMM', nargs='+')
+    parser.add_argument('--num_states', '--num-states' help='number of states in each gene mixture', default=3, type=int)
+    parser.add_argument('--num_mixtures', '--num-mixtures', help='number of gene mixtures', default=12, type=int)
+    parser.add_argument('--no_binary', '--no-binary', help='skip printing output binary histone mark calls', action='store_true')
+    parser.add_argument('--no_model_param', '--no-model-param', help='skip printing output model parameters', action='store_true')
     parser.add_argument('--resolution', help='resolution of binarized histone mark features', type=int, default=200)
     parser.add_argument('--subsample', help='fraction to subsample for seeding emission parameters', default=1., type=float)
     parser.add_argument('--window', help='bases to go in each of upstream/downstream of gene', type=int, default=2000)
-    parser.add_argument('--output_tss', help='output emissions at the TSS', default=False, action='store_true')
-    parser.add_argument('--out_dir', help='directory in which to save data', default='.')
+    parser.add_argument('--output_tss', '--output-tss', help='output emissions at the TSS', default=False, action='store_true')
+    parser.add_argument('--out_dir', '--out-dir', help='directory in which to save data', default='.')
     parser.add_argument('--verbose', default=False, action='store_true')
 
     args = parser.parse_args()
@@ -206,11 +197,15 @@ def main():
         os.makedirs(args.out_dir)
 
     ############################################################################################
-    ####    Step 0: Read in splicing file and binarized chromatin marks                     ####
+    ####    Step 1: Read in gene annotation file                                            ####
     ############################################################################################
 
     sys.stderr.write('Reading annotation file...\n')
     if '.gtf' in args.annotation:
+        raise ValueError(
+            "Warning! GTF files are difficult to parse, and may return unexpected results. Please use "
+            "BED files wherever possible, or disable this code block and modify the read_gtf function"
+        )
         gene_list = read_gtf(args.annotation)
     elif ".bed" in args.annotation:
          gene_list = read_bed(args.annotation)
@@ -218,7 +213,7 @@ def main():
         raise ValueError(f"{args.annotation} is neither a GTF nor BED file")
 
     ############################################################################################
-    ####    Step 1: Print out binarized marks to file                                       ####
+    ####    Step 2: Read binarized histone marks and print out binarized marks to file      ####
     ############################################################################################
 
     for file in os.listdir(args.out_dir):
@@ -231,7 +226,7 @@ def main():
                 num_features = len(features)
                 break
 
-    if args.binary or args.output_tss:
+    if (not args.no_binary) or args.output_tss:
 
         # Read in chromatin marks
         sys.stderr.write('Reading binary calls for histone marks\n')
@@ -256,7 +251,7 @@ def main():
 
         num_genes = len(gene_list)
 
-    if args.binary:
+    if not args.no_binary:
         # Set up a dict of open files with the chromosome as the key and print headers
         outfile_dict = {}
         outfile_ID_dict = {}
@@ -335,10 +330,10 @@ def main():
             outfile_dict[file].close()
 
     ############################################################################################
-    ####    Step 2: Print out initial probabilities                                         ####
+    ####    Step 3: Print out initial probabilities                                         ####
     ############################################################################################
 
-    if not args.model_param:
+    if args.no_model_param:
         sys.exit()
     sys.stderr.write('Printing ChromHMM initial parameters\n')
 
@@ -352,7 +347,7 @@ def main():
     outfile.write('probinit\t' + str(1+(args.num_states * args.num_mixtures)) + '\t1.0\n')
 
     ############################################################################################
-    ####    Step 3: Print out transition probabilities                                      ####
+    ####    Step 4: Print out transition probabilities                                      ####
     ############################################################################################
 
     # There are a total of (mixture * states + 1) states. Can transition from dummy state 
@@ -361,6 +356,7 @@ def main():
     # All other states can transition to themselves or the next state
 
     # Print transitions from mixture states to other states
+    sys.stderr.write('Outputting transition parameters\n')
     transition_mat = np.zeros((args.num_states * args.num_mixtures + 1, \
             args.num_states * args.num_mixtures + 1))
     # set transitions 
@@ -385,7 +381,7 @@ def main():
             outfile.write('\t'.join([str(k) for k in ["transitionprobs", idx_from + 1, idx_to + 1, value]]) + '\n')
 
     ############################################################################################
-    ####    Step 4: Print out emission probabilities                                        ####
+    ####    Step 5: Print out emission probabilities                                        ####
     ############################################################################################
 
     sys.stderr.write('Smartly initializing emission parameters\n')
