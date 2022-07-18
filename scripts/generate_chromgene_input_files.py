@@ -14,8 +14,8 @@ from smart_open import open
 class Gene:
     def __init__(self, chromosome=None, left=1e10, right=0, strand=None, name=None):
         self.chromosome = str(chromosome)
-        self.left = left
-        self.right = right
+        self.left = int(left)
+        self.right = int(right)
         self.strand = strand
         self.name = name
 
@@ -268,12 +268,13 @@ def main():
             outfile_ID_dict[chrom] = gzip.open(args.out_dir + chrom + '_ID.txt.gz','wb')
 
         # we generate the matrix on the fly and print it
-        for gg, gene in tqdm(enumerate(gene_list), total=len(gene_list), disable=not args.versbose):
+        for gg, gene in tqdm(enumerate(gene_list), total=len(gene_list), disable=not args.verbose):
             # gene = ['chr', 'start', 'end', 'gene', 'strand']
             if gene.chromosome in hist_dict:
 
                 # Find values for features anchored on start of gene
-                [left_idx, right_idx] = gene.get_idx()
+                [left_idx, right_idx] = gene.get_idx(args.resolution)
+                # Extend the window by a certain size (default 2kb)
                 left_idx = left_idx - (args.window // args.resolution)
                 right_idx = right_idx + (args.window // args.resolution)
 
@@ -316,7 +317,7 @@ def main():
             outfile_ID_dict[chrom] = gzip.open(args.out_dir + chrom + '_ID.txt.gz','wb')
 
         # we generate the matrix on the fly and print it
-        for gg, gene in tqdm(enumerate(gene_list), total=len(gene_list), disable=not args.versbose):
+        for gg, gene in tqdm(enumerate(gene_list), total=len(gene_list), disable=not args.verbose):
             # gene = ['chr', 'start', 'end', 'gene', 'strand']
             if gene.chromosome in hist_dict:
 
