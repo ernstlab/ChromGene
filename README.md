@@ -8,9 +8,13 @@ ChromGene can be applied to any genomic intervals where histone marks and DNA ac
 
 We applied ChromGene to a set of 19,919 protein-coding genes across 127 imputed epigenomes (Frankish et al. 2018, Roadmap Epigenomics Consortium et al. 2015). The exact dataset used in our analysis can be accessed at https://egg2.wustl.edu/roadmap/data/byFileType/chromhmmSegmentations/binaryChmmInput/imputed12marks/binaryData/. The full set of annotations is reported in this repository, and their descriptions and various metrics are reported in Supp. Table 1. Along with the annotations, we have included code to generate input files to use on top of ChromHMM (Ernst and Kellis, 2012), and to generate a ChromGene assignment matrix.
 
-Usage requires only basic Python packages, which can be easily installed with Anaconda or pip.
+Usage requires only basic Python packages, which can be easily installed with Anaconda (recommended) or pip. For Anaconda installation:
+1. Install Conda (https://docs.conda.io/projects/conda/en/latest/user-guide/install/index.html)
+2. Create a conda environment with Python 3.8: `conda create -n chromgene python=3.8`
+3. Activate the environment: `conda activate chromgene`
+4. Install packages: `conda install -c conda-forge tqdm numpy pandas smart_open`
 
-First, create the input binary files to use on top of ChromHMM. This will require either a GTF or BED file to demarcate the positions of genes:
+Next, create the input binary files to use on top of ChromHMM. This will require either a GTF or BED (recommended) file to demarcate the positions of genes. Note: We do not recommend using a GTF file, as they tend to be very different in structure and are difficult to parse. We have retained the function used for ChromGene for posterity, but have disabled the function, and leave it to the user to create an appropriate BED file. Usage:
 ```
 python generate_chromgene_input_files.py \
 annotation [path to bed or gtf file] \
