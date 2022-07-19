@@ -177,8 +177,8 @@ def main():
 
     parser = argparse.ArgumentParser()
     parser.add_argument('annotation', help='annotation file of genes to use to generate binary marks (gtf, bed)')
-    parser.add_argument('mark-files', help='binary calls of histone marks via ChromHMM', nargs='+')
-    parser.add_argument('--num_states', '--num-states' help='number of states in each gene mixture', default=3, type=int)
+    parser.add_argument('mark_files', help='binary calls of histone marks via ChromHMM', nargs='+')
+    parser.add_argument('--num_states', '--num-states', help='number of states in each gene mixture', default=3, type=int)
     parser.add_argument('--num_mixtures', '--num-mixtures', help='number of gene mixtures', default=12, type=int)
     parser.add_argument('--no_binary', '--no-binary', help='skip printing output binary histone mark calls', action='store_true')
     parser.add_argument('--no_model_param', '--no-model-param', help='skip printing output model parameters', action='store_true')
