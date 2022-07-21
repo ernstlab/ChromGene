@@ -15,9 +15,9 @@ def main():
     '''
     parser = argparse.ArgumentParser()
     parser.add_argument('--segmentation_dir', '--segmentation-dir', help='dir with segmentation files', default='.')
-    parser.add_argument('--ids_dir', '--ids-dir', help='directory in which to save data', default='.')
-    parser.add_argument('--states_per_mixture', '--states-per-mixture' help='number of states per mixture', type=int, default=4)
-    parser.add_argument('--chroms', help='chromosomes to include in analysis', nargs='+', default=list(range(1, 23)) + 'X')
+    parser.add_argument('--ids_dir', '--ids-dir', help='directory with ID files', default='.')
+    parser.add_argument('--states_per_mixture', '--states-per-mixture', help='number of states per mixture', type=int, default=4)
+    parser.add_argument('--chroms', help='chromosomes to include in analysis', nargs='+', default=list(range(1, 23)) + ['X'])
     parser.add_argument('--out_dir', '--out-dir', help='directory in which to save data', default='.')
     parser.add_argument('--verbose', action='store_true')
 
@@ -36,7 +36,7 @@ def main():
     per_celltype_asst_dict = {}
     for file in glob(os.path.join(args.segmentation_dir, "*_segments.bed*")):
         # Reads in segmentation files for each cell type
-        if verbose:
+        if args.verbose:
             sts.stderr.write(f"Reading {file}...\n")
         celltype = file.split('_')[0]
         segmentation = pd.read_table(file, names=['chrom', 'start', 'end', 'state'])
