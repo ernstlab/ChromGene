@@ -258,7 +258,7 @@ def main():
             outfile_dict[chrom].write(f"{cell}\t{chrom}\n".encode())
             outfile_dict[chrom].write(('\t'.join(features + ['dummy']) + '\n').encode())
             outfile_dict[chrom].write(('\t'.join(['0'] * (num_features) + ['1'] ) + '\n').encode())
-            outfile_ID_dict[chrom] = gzip.open(args.out_dir + chrom + '_ID.txt.gz','wb')
+            outfile_ID_dict[chrom] = gzip.open(args.out_dir + chrom + '_ID.bed.gz', 'wb')
 
         # we generate the matrix on the fly and print it
         for gg, gene in tqdm(enumerate(gene_list), total=len(gene_list), disable=not args.verbose):
@@ -275,18 +275,15 @@ def main():
                     # Print the gene's histone mark vales
                     for line in np.array(hist_dict[gene.chromosome][left_idx:right_idx]):
                         outfile_dict[gene.chromosome].write(('\t'.join([str(int(k)) for k in line] + ['0']) + '\n').encode())
-                    outfile_ID_dict[gene.chromosome].write(('\t'.join(
-                        [gene.name, gene.chromosome, str(gene.left), str(gene.right), gene.strand]
-                    ) + '\n').encode())
 
                 # If the strand is negative, have to use 'right_pos' instead as start of gene
                 elif gene.strand == '-':
                     # Print the gene's histone mark vales
                     for line in np.array(hist_dict[gene.chromosome][right_idx:left_idx:-1]):
                         outfile_dict[gene.chromosome].write(('\t'.join([str(int(k)) for k in line] + ['0']) + '\n').encode())
-                    outfile_ID_dict[gene.chromosome].write(('\t'.join(
-                        [gene.name, gene.chromosome, str(gene.left), str(gene.right), gene.strand]
-                    ) + '\n').encode())
+                outfile_ID_dict[gene.chromosome].write(('\t'.join(
+                    [gene.chromosome, str(gene.left), str(gene.right), gene.name, ".", gene.strand]
+                ) + '\n').encode())
                 else:
                     raise ValueError(f"Invalid strand: {gene.strand}")
 
@@ -307,7 +304,7 @@ def main():
             outfile_dict[chrom].write((cell + '\t' + chrom + '\n').encode())
             outfile_dict[chrom].write(('\t'.join(features + ['dummy']) + '\n').encode())
             outfile_dict[chrom].write(('\t'.join(['0'] * (num_features) + ['1'] ) + '\n').encode())
-            outfile_ID_dict[chrom] = gzip.open(args.out_dir + chrom + '_ID.txt.gz','wb')
+            outfile_ID_dict[chrom] = gzip.open(args.out_dir + chrom + '_ID.bed.gz', 'wb')
 
         # we generate the matrix on the fly and print it
         for gg, gene in tqdm(enumerate(gene_list), total=len(gene_list), disable=not args.verbose):
@@ -322,6 +319,10 @@ def main():
 
                 # Print a 1 for the dummy, then 0s for the rest of the values
                 outfile_dict[gene.chromosome].write(('\t'.join(['0'] * (num_features) + ['1'] ) + '\n').encode())
+                
+                outfile_ID_dict[gene.chromosome].write(('\t'.join(
+                    [gene.chromosome, str(gene.left), str(gene.right), gene.name, ".", gene.strand]
+                ) + '\n').encode())
 
         # Close all files
         for file in outfile_dict:
