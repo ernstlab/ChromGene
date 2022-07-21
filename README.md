@@ -49,7 +49,7 @@ java -jar -mx24000M  path/to/ChromHMM.jar LearnModel \
 -p 16 \  # The number of processors to use. Can change this depending on the machine the model is trained on.
 -lowmem \
 -printstatebyline \
--printposterior \
+-printposterior \  # Optional, if interested in the posterior probabilities
 -nobrowser \
 -noenrich \
 ./binaries/chromgene_binaries \
