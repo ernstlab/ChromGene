@@ -62,13 +62,13 @@ def even_subsample(len_from, len_to):
     return np.array([int(k) for k in [step_size*l for l in range(len_to)]])
 
 
-def read_gtf(gtf_file):
+def read_gtf(gtf_file, chroms):
     ### Reads GTF into a list of genes
     gene_list = []
     with open(gtf_file) as infile:
         for line in infile:
             field = line.strip().split('\t')
-            if (field[2] != 'exon') or ('_' in field[0]) or ('_dup' in field[-1]) or (field[0] == 'chrY'):
+            if (field[2] != 'exon') or ('_' in field[0]) or ('_dup' in field[-1]) or (field[0] not in chroms):
                 continue
             gene_name = field[-1].split()[5][1:-2]
             if (len(gene_list) == 0) or (gene_name != gene_list[-1].name) or (field[0] != gene_list[-1].chromosome):
@@ -183,6 +183,7 @@ def main():
     parser.add_argument('--no_binary', '--no-binary', help='skip printing output binary histone mark calls', action='store_true')
     parser.add_argument('--no_model_param', '--no-model-param', help='skip printing output model parameters', action='store_true')
     parser.add_argument('--resolution', help='resolution of binarized histone mark features', type=int, default=200)
+    parser.add_argument('--chroms', help='chromosomes to include in analysis', nargs='+', default=list(range(1, 23)) + 'X')
     parser.add_argument('--subsample', help='fraction to subsample for seeding emission parameters', default=1., type=float)
     parser.add_argument('--window', help='bases to go in each of upstream/downstream of gene', type=int, default=2000)
     parser.add_argument('--output_tss', '--output-tss', help='output emissions at the TSS', default=False, action='store_true')
@@ -196,6 +197,13 @@ def main():
     if not os.path.exists(args.out_dir):
         os.makedirs(args.out_dir)
 
+    chroms = []
+    for chrom in args.chroms:
+        if chrom.startswith('chr'):
+            chroms.append(chrom)
+        else:
+            chroms.append(f'chr{chrom}')
+
     ############################################################################################
     ####    Step 1: Read in gene annotation file                                            ####
     ############################################################################################
@@ -206,7 +214,7 @@ def main():
             "Warning! GTF files are difficult to parse, and may return unexpected results. Please use "
             "BED files wherever possible, or disable this code block and modify the read_gtf function"
         )
-        gene_list = read_gtf(args.annotation)
+        gene_list = read_gtf(args.annotation, chroms)
     elif ".bed" in args.annotation:
          gene_list = read_bed(args.annotation)
     else:
@@ -215,16 +223,6 @@ def main():
     ############################################################################################
     ####    Step 2: Read binarized histone marks and print out binarized marks to file      ####
     ############################################################################################
-
-    for file in os.listdir(args.out_dir):
-        if '_gene_binary.txt' in file:
-            with open(args.out_dir + file) as infile:
-                # read in cell type, chromosome, 
-                [cell, chromosome] = infile.readline().split()
-                features = infile.readline().split()
-                features.remove('dummy')
-                num_features = len(features)
-                break
 
     if (not args.no_binary) or args.output_tss:
 
@@ -255,7 +253,7 @@ def main():
         # Set up a dict of open files with the chromosome as the key and print headers
         outfile_dict = {}
         outfile_ID_dict = {}
-        for chrom in ['chr'+str(k) for k in range(1,23)] + ['chrX']:
+        for chrom in chroms:
             outfile_dict[chrom] = gzip.open(args.out_dir + cell + '_' + chrom + '_gene_binary.txt.gz','wb')
             outfile_dict[chrom].write(f"{cell}\t{chrom}\n".encode())
             outfile_dict[chrom].write(('\t'.join(features + ['dummy']) + '\n').encode())
@@ -304,7 +302,7 @@ def main():
     if args.output_tss:
         outfile_dict = {}
         outfile_ID_dict = {}
-        for chrom in ['chr'+str(k) for k in range(1,23)] + ['chrX']:
+        for chrom in chroms:
             outfile_dict[chrom] = gzip.open(args.out_dir + cell + '_' + chrom + '_tss_binary.txt.gz','wb')
             outfile_dict[chrom].write((cell + '\t' + chrom + '\n').encode())
             outfile_dict[chrom].write(('\t'.join(features + ['dummy']) + '\n').encode())
