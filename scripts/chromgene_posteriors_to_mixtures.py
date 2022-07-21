@@ -77,7 +77,7 @@ def main():
         fpath = os.path.join(args.ids_dir, f'{chrom}_ID.bed.gz')
         if not os.path.exists(fpath):
             raise FileNotFoundError(f"{fpath} does not exist. Are you sure you provided the right ids_dir?")
-        gene_ids[chrom] = pd.read_table(fpath, names=['chrom', 'start', 'end', 'state'])
+        gene_ids[chrom] = pd.read_table(fpath, names=['chrom', 'start', 'end', 'name', 'score', 'strand'])
         if len(gene_ids[chrom]) != len(mixture_assts[chrom]):
             raise ValueError(f"Found a different number of genes in ID files vs segmentations in {chrom=}")
 
