@@ -193,7 +193,7 @@ def main():
     parser.add_argument('--no_binary', '--no-binary', help='skip printing output binary histone mark calls', action='store_true')
     parser.add_argument('--no_model_param', '--no-model-param', help='skip printing output model parameters', action='store_true')
     parser.add_argument('--resolution', help='resolution of binarized histone mark features', type=int, default=200)
-    parser.add_argument('--chroms', help='chromosomes to include in analysis', nargs='+', default=list(range(1, 23)) + 'X')
+    parser.add_argument('--chroms', help='chromosomes to include in analysis', nargs='+', default=list(range(1, 23)) + ['X'])
     parser.add_argument('--subsample', help='fraction to subsample for seeding emission parameters', default=1., type=float)
     parser.add_argument('--sample_binary_emission_file', '--sample-binary-emission-file', help='file to sample from when determining initial emission parameters')
     parser.add_argument('--window', help='bases to go in each of upstream/downstream of gene', type=int, default=2000)
@@ -292,11 +292,11 @@ def main():
                     # Print the gene's histone mark vales
                     for line in np.array(hist_dict[gene.chromosome][right_idx:left_idx:-1]):
                         outfile_dict[gene.chromosome].write(('\t'.join([str(int(k)) for k in line] + ['0']) + '\n').encode())
+                else:
+                    raise ValueError(f"Invalid strand: {gene.strand}")
                 outfile_ID_dict[gene.chromosome].write(('\t'.join(
                     [gene.chromosome, str(gene.left), str(gene.right), gene.name, ".", gene.strand]
                 ) + '\n').encode())
-                else:
-                    raise ValueError(f"Invalid strand: {gene.strand}")
 
                 # Print a 1 for the dummy, then 0s for the rest of the values
                 outfile_dict[gene.chromosome].write(('\t'.join(['0'] * (num_features) + ['1'] ) + '\n').encode())
