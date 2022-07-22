@@ -43,7 +43,7 @@ java -jar -mx24000M  path/to/ChromHMM.jar LearnModel \
 -holdroworder \
 -init load \
 -m path_to_model_file/model_total_num_states.txt \
--n 100 \  # The number of chromosome data files to sample for each training iteration. If using small datasets, this argument can be omitted.
+-n 100 \  # The number of chromosome data files to sample for each training iteration. If using small datasets (fewer than 100 total chromosome input files), this argument can be omitted.
 -e 0 \
 -t 0 \
 -p 16 \  # The number of processors to use. Can change this depending on the machine the model is trained on.
