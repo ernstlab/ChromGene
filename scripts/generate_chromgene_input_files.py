@@ -91,7 +91,7 @@ def read_bed(bed_file):
     return gene_list
 
 
-def generate_emission_mat(args, features):
+def generate_emission_mat(args, features, sample_binary_emission_file=None):
     ### Create an emission matrix for each state based on random assignment to mixtures
 
     num_features = len(features)
@@ -101,29 +101,39 @@ def generate_emission_mat(args, features):
     emission_mat = np.zeros((args.num_states * args.num_mixtures + 1, 
         num_features + 1))
 
+    if sample_binary_emission_file is None:
+        for file in os.listdir(args.out_dir):
+            if 'chr1_gene_binary.txt' in file:
+                sample_binary_emission_file = os.path.join(args.out_dir, file)
+                break
+
     # loop over a binary emission files, then take each position and assign it to a state.
-    for file in os.listdir(args.out_dir):
-        if 'chr22_gene_binary.txt' in file:
-            with open(args.out_dir + file) as infile:
-                # pass through first two lines
-                infile.readline()
-                infile.readline()
+    if not os.path.exists(sample_binary_emission_file):
+        raise ValueError(
+            f"{sample_binary_emission_file=} is not found. "
+            "If sample_binary_emission_file is not set, ensure that args.out_dir/*chr1_gene_binary.txt.gz exists. "
+            "If sample_binary_emission_file is set, then the file does not exist."
+        )
 
-                for line in infile:
-                    emissions = [int(k) for k in line.split()]
+    with open(sample_binary_emission_file, 'r') as infile:
+        # pass through first two lines
+        infile.readline()
+        infile.readline()
 
-                    # if it's a dummy state, skip it
-                    if emissions[-1] == 1:
-                        mixture_choice = np.random.choice(np.arange(args.num_mixtures))
-                        continue
-                    else:
-                        # subsample
-                        if np.random.random() > args.subsample:
-                            continue
-                        this_state = mixture_choice*args.num_states + np.random.choice(np.arange(args.num_states))
-                        emission_mat[this_state, :-1] += emissions[:-1]
-                        state_counts[this_state] += 1
-            break
+        for line in infile:
+            emissions = [int(k) for k in line.split()]
+
+            # if it's a dummy state, skip it
+            if emissions[-1] == 1:
+                mixture_choice = np.random.choice(np.arange(args.num_mixtures))
+                continue
+            else:
+                # subsample
+                if np.random.random() > args.subsample:
+                    continue
+                this_state = mixture_choice*args.num_states + np.random.choice(np.arange(args.num_states))
+                emission_mat[this_state, :-1] += emissions[:-1]
+                state_counts[this_state] += 1
 
     # Add pseudocount and normalize counts of emissions to generate probabilities
     emission_mat[:-1, :-1] += 1.
@@ -185,6 +195,7 @@ def main():
     parser.add_argument('--resolution', help='resolution of binarized histone mark features', type=int, default=200)
     parser.add_argument('--chroms', help='chromosomes to include in analysis', nargs='+', default=list(range(1, 23)) + 'X')
     parser.add_argument('--subsample', help='fraction to subsample for seeding emission parameters', default=1., type=float)
+    parser.add_argument('--sample_binary_emission_file', '--sample-binary-emission-file', help='file to sample from when determining initial emission parameters')
     parser.add_argument('--window', help='bases to go in each of upstream/downstream of gene', type=int, default=2000)
     parser.add_argument('--output_tss', '--output-tss', help='output emissions at the TSS', default=False, action='store_true')
     parser.add_argument('--out_dir', '--out-dir', help='directory in which to save data', default='.')
@@ -319,7 +330,7 @@ def main():
 
                 # Print a 1 for the dummy, then 0s for the rest of the values
                 outfile_dict[gene.chromosome].write(('\t'.join(['0'] * (num_features) + ['1'] ) + '\n').encode())
-                
+
                 outfile_ID_dict[gene.chromosome].write(('\t'.join(
                     [gene.chromosome, str(gene.left), str(gene.right), gene.name, ".", gene.strand]
                 ) + '\n').encode())
@@ -387,7 +398,7 @@ def main():
     # emission_prob_mat is a (states, features) matrix with 
     # args.states * args.mixtures total states
     # features do not include 'dummy' and 'gene' states, only histone marks
-    emission_prob_mat = generate_emission_mat(args, features)
+    emission_prob_mat = generate_emission_mat(args, features, sample_binary_emission_file=args.sample_binary_emission_file)
 
     # Print emissions for each state, which is randomly generated
     # emissionprobs   1       0       N0-R    0       0.02042128
