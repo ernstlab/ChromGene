@@ -14,9 +14,9 @@ def main():
     This script takes segmentation files ChromHMM output and generates a matrix of ChromGene assignments
     '''
     parser = argparse.ArgumentParser()
-    parser.add_argument('--segmentation_dir', '--segmentation-dir', help='dir with segmentation files', default='.')
-    parser.add_argument('--ids_dir', '--ids-dir', help='directory with ID files', default='.')
-    parser.add_argument('--states_per_mixture', '--states-per-mixture', help='number of states per mixture', type=int, default=4)
+    parser.add_argument('--segmentation_dir', '--segmentation-dir', help='dir with segmentation files', default='.', required=True)
+    parser.add_argument('--ids_dir', '--ids-dir', help='directory with ID files', default='.', required=True)
+    parser.add_argument('--states_per_mixture', '--states-per-mixture', help='number of states per mixture', type=int, default=3)
     parser.add_argument('--chroms', help='chromosomes to include in analysis', nargs='+', default=list(range(1, 23)) + ['X'])
     parser.add_argument('--out_dir', '--out-dir', help='directory in which to save data', default='.')
     parser.add_argument('--verbose', action='store_true')
@@ -28,7 +28,7 @@ def main():
 
     chroms = []
     for chrom in args.chroms:
-        if chrom.startswith('chr'):
+        if str(chrom).startswith('chr'):
             chroms.append(chrom)
         else:
             chroms.append(f'chr{chrom}')
