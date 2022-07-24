@@ -90,7 +90,7 @@ def main():
             gene_ids[chrom][celltype] = per_celltype_asst_dict[celltype][chrom]
 
     asst_table = pd.concat([gene_ids[chrom] for chrom in chroms], ignore_index=True)
-    asst_table.to_csv(os.path.join(args.out_dir, "chromgene_assignments.tsv.gz", sep="\t", compression="gzip", index=False))
+    asst_table.to_csv(os.path.join(args.out_dir, "chromgene_assignments.tsv.gz"), sep="\t", compression="gzip", index=False)
 
 
 if __name__ == '__main__':
