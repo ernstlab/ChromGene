@@ -9,6 +9,7 @@ from tqdm import tqdm
 import numpy as np
 import pandas as pd
 from smart_open import open
+import warnings
 
 
 class Gene:
@@ -67,6 +68,8 @@ def read_gtf(gtf_file, chroms):
     gene_list = []
     with open(gtf_file) as infile:
         for line in infile:
+            if line.startswith("#"):
+                continue
             field = line.strip().split('\t')
             if (field[2] != 'exon') or ('_' in field[0]) or ('_dup' in field[-1]) or (field[0] not in chroms):
                 continue
@@ -210,6 +213,7 @@ def main():
 
     chroms = []
     for chrom in args.chroms:
+        chrom = str(chrom)
         if chrom.startswith('chr'):
             chroms.append(chrom)
         else:
@@ -221,9 +225,10 @@ def main():
 
     sys.stderr.write('Reading annotation file...\n')
     if '.gtf' in args.annotation:
-        raise ValueError(
+        warnings.warn(
             "Warning! GTF files are difficult to parse, and may return unexpected results. Please use "
-            "BED files wherever possible, or disable this code block and modify the read_gtf function"
+            "BED files wherever possible, or disable this code block and modify the read_gtf function",
+            UserWarning,
         )
         gene_list = read_gtf(args.annotation, chroms)
     elif ".bed" in args.annotation:
