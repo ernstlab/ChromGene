@@ -12,7 +12,7 @@ Usage requires only basic Python packages, which can be easily installed with An
 1. Install Conda (https://docs.conda.io/projects/conda/en/latest/user-guide/install/index.html)
 2. Create a conda environment with Python 3.8: `conda create -n chromgene python=3.8`
 3. Activate the environment: `conda activate chromgene`
-4. Install packages: `conda install -c conda-forge tqdm numpy pandas smart_open glob2`
+4. Install packages: `conda install -c conda-forge tqdm numpy pandas smart_open glob2 itertools`
 
 Next, create the input binary files to use on top of ChromHMM. This will require either a GTF or BED (recommended) file to demarcate the positions of genes. Note: We do not recommend using a GTF file, as they tend to be very different in structure and are difficult to parse. We have retained the function used for ChromGene for posterity, but have disabled the function, and leave it to the user to create an appropriate BED file. Usage:
 ```
