@@ -10,15 +10,19 @@ import numpy as np
 import pandas as pd
 from smart_open import open
 import warnings
+import itertools
+from joblib import Parallel, delayed
 
 
 class Gene:
-    def __init__(self, chromosome=None, left=1e10, right=0, strand=None, name=None):
+    def __init__(self, chromosome=None, left=1e10, right=0, strand=None, name=None, gene_id=None, gene_type=None):
         self.chromosome = str(chromosome)
         self.left = int(left)
         self.right = int(right)
         self.strand = strand
         self.name = name
+        self.gene_id = gene_id
+        self.gene_type = gene_type
         self.exons = []
 
     def add_exon(self, start, end):
@@ -63,8 +67,10 @@ def even_subsample(len_from, len_to):
     return np.array([int(k) for k in [step_size*l for l in range(len_to)]])
 
 
-def read_gtf(gtf_file, chroms):
+def read_gtf(gtf_file, chroms, output_bed=None):
     ### Reads GTF into a list of genes
+    seen_gene_ids = set()
+    prev_gene_id = None
     gene_list = []
     with open(gtf_file) as infile:
         for line in infile:
@@ -73,10 +79,27 @@ def read_gtf(gtf_file, chroms):
             field = line.strip().split('\t')
             if (field[2] != 'exon') or ('_' in field[0]) or ('_dup' in field[-1]) or (field[0] not in chroms):
                 continue
-            gene_name = field[-1].split()[5][1:-2]
-            if (len(gene_list) == 0) or (gene_name != gene_list[-1].name) or (field[0] != gene_list[-1].chromosome):
-                gene_list.append(Gene(chromosome=field[0], strand=field[6], name=gene_name))
+            desc_fields = field[-1].split()
+            gene_id_idx = desc_fields.index("gene_id") + 1
+            gene_type_idx = desc_fields.index("gene_type") + 1
+            gene_name_idx = desc_fields.index("gene_name") + 1
+
+            gene_id = desc_fields[gene_id_idx].lstrip('"').rstrip('";')
+            gene_type = desc_fields[gene_type_idx].lstrip('"').rstrip('";')
+            gene_name = desc_fields[gene_name_idx].lstrip('"').rstrip('";')
+
+            if not gene_id == prev_gene_id:
+                assert gene_id not in seen_gene_ids, f"{gene_id=} already encountered. GTF must not be sorted by gene id! Offending {line=}"
+                prev_gene_id = gene_id
+                seen_gene_ids.add(gene_id)
+                gene_list.append(Gene(chromosome=field[0], strand=field[6], name=gene_name, gene_id=gene_id, gene_type=gene_type))
+
             gene_list[-1].add_exon(int(field[3]), int(field[4]))
+
+    if output_bed is not None:
+        with open(output_bed, "w") as outfile:
+            for gene in gene_list:
+                outfile.write(f"{gene.chromosome}\t{gene.left}\t{gene.right}\t{gene.name}\t.\t{gene.strand}\t{gene.gene_id}\t{gene.gene_type}\n")
 
     return gene_list
 
@@ -92,6 +115,129 @@ def read_bed(bed_file):
             gene_list.append(Gene(chromosome=chrom, left=start, right=stop, strand=strand, name=gene_name))
 
     return gene_list
+
+
+def print_binaries(cell_input_files, cell, chroms, gene_list, features, args):
+    hist_dict = {}
+    num_features = len(features)
+    
+    for mark_file in tqdm(cell_input_files[cell], desc=f"Reading data for cell type {cell}", disable=args.workers > 1):
+        with open(mark_file) as infile:
+
+            #    E007    chr1
+            #    H3K27ac    H3K27me3    H3K36me3    H3K4me1    H3K4me3    H3K9me3 ...
+            #    1    0    0    1    0    0
+            #    1    0    1    0    1    0
+            #    1    0    1    0    0    0
+
+            # Read first line just for the name of the cell line and the chromosome number
+            [_cell, chromosome] = infile.readline().split()
+            hist_dict[chromosome] = pd.read_table(infile, skiprows=2, names=features)
+
+    if not args.no_binary:
+        
+        # Set up a dict of open files with the chromosome as the key and print headers
+        outfile_dict = {}
+        outfile_ID_dict = {}
+        for chrom in chroms:
+            outfile_dict[chrom] = gzip.open(args.out_dir + cell + '_' + chrom + '_gene_binary.txt.gz','wb')
+            outfile_dict[chrom].write(f"{cell}\t{chrom}\n".encode())
+            outfile_dict[chrom].write(('\t'.join(features + ['dummy']) + '\n').encode())
+            outfile_dict[chrom].write(('\t'.join(['0'] * (num_features) + ['1'] ) + '\n').encode())
+        
+        for chrom in chroms:
+            outfile_ID_dict[chrom] = gzip.open(args.out_dir + chrom + '_ID.bed.gz', 'wb')
+
+        # We generate the matrix on the fly and print it
+        for gg, gene in tqdm(
+            enumerate(gene_list), 
+            desc=f'Printing gene-level histone marks for cell type {cell}',
+            total=len(gene_list), 
+            disable=args.workers > 1,
+        ):
+
+            if gene.chromosome in chroms:
+                # Find values for features anchored on start of gene
+                [left_idx, right_idx] = gene.get_idx(args.resolution)
+                # Extend the window by a certain size (default 2kb)
+                left_idx = left_idx - (args.window // args.resolution)
+                right_idx = right_idx + (args.window // args.resolution)
+
+                if gene.strand == '+':
+                    # Print the gene's histone mark vales
+                    for line in np.array(hist_dict[gene.chromosome][left_idx:right_idx]):
+                        outfile_dict[gene.chromosome].write(
+                            ('\t'.join([str(int(k)) for k in line] + ['0']) + '\n').encode()
+                        )
+
+                # If the strand is negative, have to use 'right_pos' instead as start of gene
+                elif gene.strand == '-':
+                    # Print the gene's histone mark vales
+                    for line in np.array(hist_dict[gene.chromosome][right_idx:left_idx:-1]):
+                        outfile_dict[gene.chromosome].write(
+                            ('\t'.join([str(int(k)) for k in line] + ['0']) + '\n').encode()
+                        )
+                else:
+                    raise ValueError(f"Invalid strand: {gene.strand}")
+                
+                # Print a 1 for the dummy, then 0s for the rest of the values
+                outfile_dict[gene.chromosome].write(
+                    ('\t'.join(['0'] * (num_features) + ['1'] ) + '\n').encode()
+                )
+
+                # Write to the ID file to keep track of the genes
+                outfile_ID_dict[gene.chromosome].write(('\t'.join(
+                    [gene.chromosome, str(gene.left), str(gene.right), gene.name, ".", gene.strand]
+                ) + '\n').encode())
+
+
+        # Close all files
+        for outfile in outfile_dict.values():
+            outfile.close()
+        for file in outfile_ID_dict.values():
+            outfile.close()
+
+        if args.output_tss:
+            outfile_dict = {}
+            outfile_ID_dict = {}
+            for chrom in chroms:
+                outfile_dict[chrom] = gzip.open(args.out_dir + cell + '_' + chrom + '_tss_binary.txt.gz','wb')
+                outfile_dict[chrom].write((cell + '\t' + chrom + '\n').encode())
+                outfile_dict[chrom].write(('\t'.join(features + ['dummy']) + '\n').encode())
+                outfile_dict[chrom].write(('\t'.join(['0'] * (num_features) + ['1'] ) + '\n').encode())
+            
+            for chrom in chroms:
+                outfile_ID_dict[chrom] = gzip.open(args.out_dir + chrom + '_ID.bed.gz', 'wb')
+
+            # we generate the matrix on the fly and print it
+            for gg, gene in tqdm(enumerate(gene_list), total=len(gene_list), disable=args.workers > 1):
+                if gene.chromosome in chroms:
+
+                    # Find values for features anchored on start of gene
+                    tss_idx = gene.get_tss_idx()
+
+                    for cell in cells:
+                        line = np.array(hist_dict[gene.chromosome][tss_idx])
+                        outfile_dict[gene.chromosome].write(
+                            ('\t'.join([str(int(k)) for k in line] + ['0']) + '\n').encode()
+                            )
+
+                        # Print a 1 for the dummy, then 0s for the rest of the values
+                        outfile_dict[gene.chromosome].write(
+                            ('\t'.join(['0'] * (num_features) + ['1'] ) + '\n').encode()
+                            )
+
+                    outfile_ID_dict[gene.chromosome].write(
+                        ('\t'.join(
+                            [gene.chromosome, str(gene.left), str(gene.right), gene.name, ".", gene.strand]
+                        ) + '\n').encode()
+                    )
+
+        # Close all files
+        for outfile in outfile_dict.values():
+            outfile.close()
+        for file in outfile_ID_dict.values():
+            outfile.close()
 
 
 def generate_emission_mat(args, features, sample_binary_emission_file=None):
@@ -191,6 +337,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('annotation', help='annotation file of genes to use to generate binary marks (gtf, bed)')
     parser.add_argument('mark_files', help='binary calls of histone marks via ChromHMM', nargs='+')
+    parser.add_argument('--output_bed', '--output-bed', help='output BED file for annotation if reading a GTF')
     parser.add_argument('--num_states', '--num-states', help='number of states in each gene mixture', default=3, type=int)
     parser.add_argument('--num_mixtures', '--num-mixtures', help='number of gene mixtures', default=12, type=int)
     parser.add_argument('--no_binary', '--no-binary', help='skip printing output binary histone mark calls', action='store_true')
@@ -202,6 +349,7 @@ def main():
     parser.add_argument('--window', help='bases to go in each of upstream/downstream of gene', type=int, default=2000)
     parser.add_argument('--output_tss', '--output-tss', help='output emissions at the TSS', default=False, action='store_true')
     parser.add_argument('--out_dir', '--out-dir', help='directory in which to save data', default='.')
+    parser.add_argument('--workers', help='number of cores to use for writing', type=int, default=1)
     parser.add_argument('--verbose', default=False, action='store_true')
 
     args = parser.parse_args()
@@ -227,122 +375,51 @@ def main():
     if '.gtf' in args.annotation:
         warnings.warn(
             "Warning! GTF files are difficult to parse, and may return unexpected results. Please use "
-            "BED files wherever possible, or disable this code block and modify the read_gtf function",
+            "BED files wherever possible, or gtfs at your peril!",
             UserWarning,
         )
-        gene_list = read_gtf(args.annotation, chroms)
+        gene_list = read_gtf(args.annotation, chroms, args.output_bed)
     elif ".bed" in args.annotation:
          gene_list = read_bed(args.annotation)
     else:
         raise ValueError(f"{args.annotation} is neither a GTF nor BED file")
+
+    num_genes = len(gene_list)
 
     ############################################################################################
     ####    Step 2: Read binarized histone marks and print out binarized marks to file      ####
     ############################################################################################
 
     if (not args.no_binary) or args.output_tss:
-
-        # Read in chromatin marks
-        sys.stderr.write('Reading binary calls for histone marks\n')
-        hist_dict = {}
+        # First determine the cell types and chromosomes to loop over
+        cells = set()
+        input_chroms = set()
+        cell_input_files = {}
+        features = None
         for mark_file in args.mark_files:
             with open(mark_file) as infile:
-                if args.verbose:
-                    print(f"{mark_file}...'")
+                [cell, chrom] = infile.readline().split()
+                _features = infile.readline().split()
+                if features is not None and _features != features:
+                    raise ValueError(
+                        f"Features found in file {mark_file} do not correspond to previous files: " \
+                        f"Previous {features=}, new features={_features}"
+                    )
 
-                #    E007    chr1
-                #    H3K27ac    H3K27me3    H3K36me3    H3K4me1    H3K4me3    H3K9me3 ...
-                #    1    0    0    1    0    0
-                #    1    0    1    0    1    0
-                #    1    0    1    0    0    0
+                features = _features
+                if not cell in cells:
+                    cells.add(cell)
+                    cell_input_files[cell] = []
+                if not chrom in input_chroms:
+                    input_chroms.add(chrom)
+                cell_input_files[cell].append(mark_file)
+        num_features = len(features)
 
-                # Read first line just for the name of the cell line and the chromosome number
-                [cell, chromosome] = infile.readline().split()
-                features = infile.readline().split()
-                num_features = len(features)
-                hist_dict[chromosome] = pd.read_table(infile, skiprows=2, names=features)
-        sys.stderr.write('Printing modified binary calls for gene histone marks\n')
-
-        num_genes = len(gene_list)
-
-    if not args.no_binary:
-        # Set up a dict of open files with the chromosome as the key and print headers
-        outfile_dict = {}
-        outfile_ID_dict = {}
-        for chrom in chroms:
-            outfile_dict[chrom] = gzip.open(args.out_dir + cell + '_' + chrom + '_gene_binary.txt.gz','wb')
-            outfile_dict[chrom].write(f"{cell}\t{chrom}\n".encode())
-            outfile_dict[chrom].write(('\t'.join(features + ['dummy']) + '\n').encode())
-            outfile_dict[chrom].write(('\t'.join(['0'] * (num_features) + ['1'] ) + '\n').encode())
-            outfile_ID_dict[chrom] = gzip.open(args.out_dir + chrom + '_ID.bed.gz', 'wb')
-
-        # we generate the matrix on the fly and print it
-        for gg, gene in tqdm(enumerate(gene_list), total=len(gene_list), disable=not args.verbose):
-            # gene = ['chr', 'start', 'end', 'gene', 'strand']
-            if gene.chromosome in hist_dict:
-
-                # Find values for features anchored on start of gene
-                [left_idx, right_idx] = gene.get_idx(args.resolution)
-                # Extend the window by a certain size (default 2kb)
-                left_idx = left_idx - (args.window // args.resolution)
-                right_idx = right_idx + (args.window // args.resolution)
-
-                if gene.strand == '+':
-                    # Print the gene's histone mark vales
-                    for line in np.array(hist_dict[gene.chromosome][left_idx:right_idx]):
-                        outfile_dict[gene.chromosome].write(('\t'.join([str(int(k)) for k in line] + ['0']) + '\n').encode())
-
-                # If the strand is negative, have to use 'right_pos' instead as start of gene
-                elif gene.strand == '-':
-                    # Print the gene's histone mark vales
-                    for line in np.array(hist_dict[gene.chromosome][right_idx:left_idx:-1]):
-                        outfile_dict[gene.chromosome].write(('\t'.join([str(int(k)) for k in line] + ['0']) + '\n').encode())
-                else:
-                    raise ValueError(f"Invalid strand: {gene.strand}")
-                outfile_ID_dict[gene.chromosome].write(('\t'.join(
-                    [gene.chromosome, str(gene.left), str(gene.right), gene.name, ".", gene.strand]
-                ) + '\n').encode())
-
-                # Print a 1 for the dummy, then 0s for the rest of the values
-                outfile_dict[gene.chromosome].write(('\t'.join(['0'] * (num_features) + ['1'] ) + '\n').encode())
-
-        # Close all files
-        for file in outfile_dict:
-            outfile_dict[file].close()
-        for file in outfile_ID_dict:
-            outfile_ID_dict[file].close()
-
-    if args.output_tss:
-        outfile_dict = {}
-        outfile_ID_dict = {}
-        for chrom in chroms:
-            outfile_dict[chrom] = gzip.open(args.out_dir + cell + '_' + chrom + '_tss_binary.txt.gz','wb')
-            outfile_dict[chrom].write((cell + '\t' + chrom + '\n').encode())
-            outfile_dict[chrom].write(('\t'.join(features + ['dummy']) + '\n').encode())
-            outfile_dict[chrom].write(('\t'.join(['0'] * (num_features) + ['1'] ) + '\n').encode())
-            outfile_ID_dict[chrom] = gzip.open(args.out_dir + chrom + '_ID.bed.gz', 'wb')
-
-        # we generate the matrix on the fly and print it
-        for gg, gene in tqdm(enumerate(gene_list), total=len(gene_list), disable=not args.verbose):
-            # gene = ['chr', 'start', 'end', 'gene', 'strand']
-            if gene.chromosome in hist_dict:
-
-                # Find values for features anchored on start of gene
-                tss_idx = gene.get_tss_idx()
-
-                line = np.array(hist_dict[gene.chromosome][tss_idx])
-                outfile_dict[gene.chromosome].write(('\t'.join([str(int(k)) for k in line] + ['0']) + '\n').encode())
-
-                # Print a 1 for the dummy, then 0s for the rest of the values
-                outfile_dict[gene.chromosome].write(('\t'.join(['0'] * (num_features) + ['1'] ) + '\n').encode())
-
-                outfile_ID_dict[gene.chromosome].write(('\t'.join(
-                    [gene.chromosome, str(gene.left), str(gene.right), gene.name, ".", gene.strand]
-                ) + '\n').encode())
-
-        # Close all files
-        for file in outfile_dict:
-            outfile_dict[file].close()
+        if args.workers > 1:
+            Parallel(args.workers)(delayed(print_binaries)(cell_input_files, cell, chroms, gene_list, features, args) for cell in tqdm(cells, total=len(cells), desc="Printing binaries"))
+        else:
+            for cc, cell in enumerate(cells):
+                print_binaries(cell_input_files, cell, chroms, gene_list, features, args)
 
     ############################################################################################
     ####    Step 3: Print out initial probabilities                                         ####
