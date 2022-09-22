@@ -89,7 +89,6 @@ def read_gtf(gtf_file, chroms, output_bed=None):
             gene_name = desc_fields[gene_name_idx].lstrip('"').rstrip('";')
 
             if not gene_id == prev_gene_id:
-                # if (len(gene_list) == 0) or (gene_name != gene_list[-1].name) or (field[0] != gene_list[-1].chromosome):
                 assert gene_id not in seen_gene_ids, f"{gene_id=} already encountered. GTF must not be sorted by gene id! Offending {line=}"
                 prev_gene_id = gene_id
                 seen_gene_ids.add(gene_id)
