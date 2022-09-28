@@ -89,6 +89,7 @@ def read_gtf(gtf_file, chroms, output_bed=None):
             gene_name = desc_fields[gene_name_idx].lstrip('"').rstrip('";')
 
             if not gene_id == prev_gene_id:
+                # if (len(gene_list) == 0) or (gene_name != gene_list[-1].name) or (field[0] != gene_list[-1].chromosome):
                 assert gene_id not in seen_gene_ids, f"{gene_id=} already encountered. GTF must not be sorted by gene id! Offending {line=}"
                 prev_gene_id = gene_id
                 seen_gene_ids.add(gene_id)
@@ -121,7 +122,7 @@ def print_binaries(cell_input_files, cell, chroms, gene_list, features, args):
     hist_dict = {}
     num_features = len(features)
 
-    for mark_file in tqdm(cell_input_files[cell], desc=f"Reading data for cell type {cell}", disable=args.workers > 1):
+    for mark_file in tqdm(cell_input_files[cell], desc=f"Reading data for cell type {cell}", disable=(args.workers > 1) or args.quiet):
         with open(mark_file) as infile:
 
             #    E007    chr1
@@ -153,7 +154,7 @@ def print_binaries(cell_input_files, cell, chroms, gene_list, features, args):
             enumerate(gene_list), 
             desc=f'Printing gene-level histone marks for cell type {cell}',
             total=len(gene_list), 
-            disable=args.workers > 1,
+            disable=(args.workers > 1) or quiet,
         ):
 
             if gene.chromosome in chroms:
@@ -210,7 +211,7 @@ def print_binaries(cell_input_files, cell, chroms, gene_list, features, args):
                 outfile_ID_dict[chrom] = gzip.open(args.out_dir + chrom + '_ID.bed.gz', 'wb')
 
             # we generate the matrix on the fly and print it
-            for gg, gene in tqdm(enumerate(gene_list), total=len(gene_list), disable=args.workers > 1):
+            for gg, gene in tqdm(enumerate(gene_list), total=len(gene_list), disable=(args.workers > 1) or quiet):
                 if gene.chromosome in chroms:
 
                     # Find values for features anchored on start of gene
@@ -350,7 +351,7 @@ def main():
     parser.add_argument('--output_tss', '--output-tss', help='output emissions at the TSS', default=False, action='store_true')
     parser.add_argument('--out_dir', '--out-dir', help='directory in which to save data', default='.')
     parser.add_argument('--workers', help='number of cores to use for writing', type=int, default=1)
-    parser.add_argument('--verbose', default=False, action='store_true')
+    parser.add_argument('--quiet', default=False, action='store_true')
 
     args = parser.parse_args()
 
@@ -416,7 +417,10 @@ def main():
         num_features = len(features)
 
         if args.workers > 1:
-            Parallel(args.workers)(delayed(print_binaries)(cell_input_files, cell, chroms, gene_list, features, args) for cell in tqdm(cells, total=len(cells), desc="Printing binaries"))
+            Parallel(args.workers)(
+                delayed(print_binaries)(cell_input_files, cell, chroms, gene_list, features, args) 
+                for cell in tqdm(cells, total=len(cells), desc="Printing binaries", disable=args.quiet)
+            )
         else:
             for cc, cell in enumerate(cells):
                 print_binaries(cell_input_files, cell, chroms, gene_list, features, args)
