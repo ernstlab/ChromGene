@@ -21,15 +21,15 @@ annotation [path to bed or gtf file] \
 mark_files [ChromHMM chromatin mark binary call file paths] \
 --num-states [3] \  # number of states per mixture component
 --num-components [12] \  # number of mixtures components
---binary [True] \  # whether to output binary files, can be set to False for testing
---model-param [True] \  # whether to output model param files, can be set to False for testing
+[--no-binary] \  # skip printing output binary files, can be used for testing
+[--no-model-param] \  # skip printing output model param files, can be used for testing
 --resolution [200] \  # resolution of data to output
 --chroms [1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 X] \  # list of chromosomes to use
 --subsample [1] \  # fraction to subsample positions to initialize ChromGene emission parameters
 --window [2000] \  # bases to go up/downstream of TSS/TES for flanking regions
---output-tss [False] \  # output TSS binaries for baseline comparison
+[--output-tss] \  # output TSS binaries for baseline comparison
 --out-dir ["."] \  # output directory
---verbose [False]  # verbose
+[--quiet]  # Disable progress messages
 ```
 
 Second, run ChromHMM on the binary files, passing the model file and binaries deposited into `out_dir`. The argument `total_num_states` should be `(num_mixture components * num_states) + 1`. The latest version of ChromHMM can be downloaded at https://ernstlab.biolchem.ucla.edu/ChromHMM/. The following command and flags should be used (modifiable arguments are followed by a # comment):
