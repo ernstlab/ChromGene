@@ -120,8 +120,8 @@ def read_bed(bed_file):
 def print_binaries(cell_input_files, cell, chroms, gene_list, features, args):
     hist_dict = {}
     num_features = len(features)
-    
-    for mark_file in tqdm(cell_input_files[cell], desc=f"Reading data for cell type {cell}", disable=args.workers > 1):
+
+    for mark_file in tqdm(cell_input_files[cell], desc=f"Reading data for cell type {cell}", disable=(args.workers > 1) or args.quiet):
         with open(mark_file) as infile:
 
             #    E007    chr1
@@ -153,7 +153,7 @@ def print_binaries(cell_input_files, cell, chroms, gene_list, features, args):
             enumerate(gene_list), 
             desc=f'Printing gene-level histone marks for cell type {cell}',
             total=len(gene_list), 
-            disable=args.workers > 1,
+            disable=(args.workers > 1) or quiet,
         ):
 
             if gene.chromosome in chroms:
@@ -210,7 +210,7 @@ def print_binaries(cell_input_files, cell, chroms, gene_list, features, args):
                 outfile_ID_dict[chrom] = gzip.open(args.out_dir + chrom + '_ID.bed.gz', 'wb')
 
             # we generate the matrix on the fly and print it
-            for gg, gene in tqdm(enumerate(gene_list), total=len(gene_list), disable=args.workers > 1):
+            for gg, gene in tqdm(enumerate(gene_list), total=len(gene_list), disable=(args.workers > 1) or quiet):
                 if gene.chromosome in chroms:
 
                     # Find values for features anchored on start of gene
@@ -241,13 +241,13 @@ def print_binaries(cell_input_files, cell, chroms, gene_list, features, args):
 
 
 def generate_emission_mat(args, features, sample_binary_emission_file=None):
-    ### Create an emission matrix for each state based on random assignment to mixtures
+    ### Create an emission matrix for each state based on random assignment to components
 
     num_features = len(features)
     # total number of states besides dummy
-    state_counts = np.array([0.] * (args.num_states * args.num_mixtures))
+    state_counts = np.array([0.] * (args.num_states * args.num_components))
     # emission_mat excludes the gene and dummy features
-    emission_mat = np.zeros((args.num_states * args.num_mixtures + 1, 
+    emission_mat = np.zeros((args.num_states * args.num_components + 1, 
         num_features + 1))
 
     if sample_binary_emission_file is None:
@@ -274,20 +274,20 @@ def generate_emission_mat(args, features, sample_binary_emission_file=None):
 
             # if it's a dummy state, skip it
             if emissions[-1] == 1:
-                mixture_choice = np.random.choice(np.arange(args.num_mixtures))
+                component_choice = np.random.choice(np.arange(args.num_components))
                 continue
             else:
                 # subsample
                 if np.random.random() > args.subsample:
                     continue
-                this_state = mixture_choice*args.num_states + np.random.choice(np.arange(args.num_states))
+                this_state = component_choice*args.num_states + np.random.choice(np.arange(args.num_states))
                 emission_mat[this_state, :-1] += emissions[:-1]
                 state_counts[this_state] += 1
 
     # Add pseudocount and normalize counts of emissions to generate probabilities
     emission_mat[:-1, :-1] += 1.
     state_counts[:] += 1.
-    for state in range(args.num_states * args.num_mixtures):
+    for state in range(args.num_states * args.num_components):
         emission_mat[state] = emission_mat[state] / state_counts[state]
     # set emission for dummy variable
     emission_mat[-1, -1] = 1.
@@ -323,8 +323,8 @@ def main():
     ####    Step 3:                                                                         ####
     ####        Print out transition matrix. The transition of each state to itself         ####
     ####        is p, and into the next state is 1-p. Can only transition into              ####
-    ####        dummy state from last state in each mixture. From dummy state, must         ####
-    ####        transition into one of the mixtures' first state. Combine into              ####
+    ####        dummy state from last state in each component. From dummy state, must       ####
+    ####        transition into one of the components' first state. Combine into            ####
     ####        large transition matrix concatenated along diagonal                         ####
     ####                                                                                    ####
     ####    Step 4:                                                                         ####
@@ -338,8 +338,8 @@ def main():
     parser.add_argument('annotation', help='annotation file of genes to use to generate binary marks (gtf, bed)')
     parser.add_argument('mark_files', help='binary calls of histone marks via ChromHMM', nargs='+')
     parser.add_argument('--output_bed', '--output-bed', help='output BED file for annotation if reading a GTF')
-    parser.add_argument('--num_states', '--num-states', help='number of states in each gene mixture', default=3, type=int)
-    parser.add_argument('--num_mixtures', '--num-mixtures', help='number of gene mixtures', default=12, type=int)
+    parser.add_argument('--num_states', '--num-states', help='number of states in each gene component', default=3, type=int)
+    parser.add_argument('--num_components', '--num-components', help='number of gene mixture components', default=12, type=int)
     parser.add_argument('--no_binary', '--no-binary', help='skip printing output binary histone mark calls', action='store_true')
     parser.add_argument('--no_model_param', '--no-model-param', help='skip printing output model parameters', action='store_true')
     parser.add_argument('--resolution', help='resolution of binarized histone mark features', type=int, default=200)
@@ -350,7 +350,7 @@ def main():
     parser.add_argument('--output_tss', '--output-tss', help='output emissions at the TSS', default=False, action='store_true')
     parser.add_argument('--out_dir', '--out-dir', help='directory in which to save data', default='.')
     parser.add_argument('--workers', help='number of cores to use for writing', type=int, default=1)
-    parser.add_argument('--verbose', default=False, action='store_true')
+    parser.add_argument('--quiet', default=False, action='store_true')
 
     args = parser.parse_args()
 
@@ -416,7 +416,10 @@ def main():
         num_features = len(features)
 
         if args.workers > 1:
-            Parallel(args.workers)(delayed(print_binaries)(cell_input_files, cell, chroms, gene_list, features, args) for cell in tqdm(cells, total=len(cells), desc="Printing binaries"))
+            Parallel(args.workers)(
+                delayed(print_binaries)(cell_input_files, cell, chroms, gene_list, features, args) 
+                for cell in tqdm(cells, total=len(cells), desc="Printing binaries", disable=args.quiet)
+            )
         else:
             for cc, cell in enumerate(cells):
                 print_binaries(cell_input_files, cell, chroms, gene_list, features, args)
@@ -430,41 +433,41 @@ def main():
     sys.stderr.write('Printing ChromHMM initial parameters\n')
 
     # print header: number of states, number of marks, 'E', model likelihood, number of iterations
-    outfile = open(args.out_dir + 'model_' + str(args.num_states * args.num_mixtures + 1) + '.txt','w')
-    outfile.write(str(args.num_states * args.num_mixtures + 1) + '\t' + str(num_features + 1) + '\tE\t-2E7\t200\n')
+    outfile = open(args.out_dir + 'model_' + str(args.num_states * args.num_components + 1) + '.txt','w')
+    outfile.write(str(args.num_states * args.num_components + 1) + '\t' + str(num_features + 1) + '\tE\t-2E7\t200\n')
 
-    # print initial probabilities. There are (mixture * states) states, followed by dummy state
-    for state_idx in range(1, 1+(args.num_states * args.num_mixtures)):
+    # print initial probabilities. There are (component * states) states, followed by dummy state
+    for state_idx in range(1, 1+(args.num_states * args.num_components)):
         outfile.write('probinit\t'+str(state_idx)+'\t0.0\n')
-    outfile.write('probinit\t' + str(1+(args.num_states * args.num_mixtures)) + '\t1.0\n')
+    outfile.write('probinit\t' + str(1+(args.num_states * args.num_components)) + '\t1.0\n')
 
     ############################################################################################
     ####    Step 4: Print out transition probabilities                                      ####
     ############################################################################################
 
-    # There are a total of (mixture * states + 1) states. Can transition from dummy state 
+    # There are a total of (component * states + 1) states. Can transition from dummy state 
     # to state (n mod states)==1
     # States (n mod states) == -1 can only transition to themselves or last state
     # All other states can transition to themselves or the next state
 
-    # Print transitions from mixture states to other states
+    # Print transitions from component states to other states
     sys.stderr.write('Outputting transition parameters\n')
-    transition_mat = np.zeros((args.num_states * args.num_mixtures + 1, \
-            args.num_states * args.num_mixtures + 1))
+    transition_mat = np.zeros((args.num_states * args.num_components + 1, \
+            args.num_states * args.num_components + 1))
     # set transitions 
-    for mixture_idx in range(args.num_mixtures):
+    for component_idx in range(args.num_components):
         to_self = random.uniform(.85, .95)
         for state_idx in range(args.num_states):
             to_state = partition(args.num_states, norm=to_self)
-            # transitions within mixture
+            # transitions within component
             transition_mat[
-                args.num_states*mixture_idx+state_idx, 
-                args.num_states*mixture_idx:args.num_states*(mixture_idx+1)
+                args.num_states*component_idx+state_idx, 
+                args.num_states*component_idx:args.num_states*(component_idx+1)
             ] = to_state
-            transition_mat[args.num_states*mixture_idx+state_idx, -1] = 1-to_self
+            transition_mat[args.num_states*component_idx+state_idx, -1] = 1-to_self
     
-    # set transitions from dummy to other states. Should be able to go to any state in any mixture
-    dummy_to_state = partition(args.num_states*args.num_mixtures)
+    # set transitions from dummy to other states. Should be able to go to any state in any component
+    dummy_to_state = partition(args.num_states*args.num_components)
     transition_mat[-1, :-1] = dummy_to_state
 
     # print transition matrix
@@ -478,7 +481,7 @@ def main():
 
     sys.stderr.write('Smartly initializing emission parameters\n')
     # emission_prob_mat is a (states, features) matrix with 
-    # args.states * args.mixtures total states
+    # args.states * args.components total states
     # features do not include 'dummy' and 'gene' states, only histone marks
     emission_prob_mat = generate_emission_mat(args, features, sample_binary_emission_file=args.sample_binary_emission_file)
 
