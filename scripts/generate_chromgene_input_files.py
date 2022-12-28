@@ -153,7 +153,7 @@ def print_binaries(cell_input_files, cell, chroms, gene_list, features, args):
             enumerate(gene_list), 
             desc=f'Printing gene-level histone marks for cell type {cell}',
             total=len(gene_list), 
-            disable=(args.workers > 1) or quiet,
+            disable=(args.workers > 1) or args.quiet,
         ):
 
             if gene.chromosome in chroms:
@@ -210,7 +210,7 @@ def print_binaries(cell_input_files, cell, chroms, gene_list, features, args):
                 outfile_ID_dict[chrom] = gzip.open(args.out_dir + chrom + '_ID.bed.gz', 'wb')
 
             # we generate the matrix on the fly and print it
-            for gg, gene in tqdm(enumerate(gene_list), total=len(gene_list), disable=(args.workers > 1) or quiet):
+            for gg, gene in tqdm(enumerate(gene_list), total=len(gene_list), disable=(args.workers > 1) or args.quiet):
                 if gene.chromosome in chroms:
 
                     # Find values for features anchored on start of gene
