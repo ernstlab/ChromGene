@@ -14,7 +14,18 @@ Usage requires only basic Python packages, which can be easily installed with Co
 3. Activate the environment: `conda activate chromgene`
 4. Install packages: `conda install -c conda-forge tqdm numpy pandas smart_open glob2 joblib`. If using Mamba, replace `conda` with `mamba`.
 
-Next, create the input binary files to use on top of ChromHMM. This will require either a GTF or BED (recommended) file to demarcate the positions of genes. Note: We do not recommend using a GTF file, as they tend to be very different in structure and are difficult to parse. We have retained the function used for ChromGene for posterity, but have disabled the function, and leave it to the user to create an appropriate BED file. Usage:
+Next, create the input binary files to use on top of ChromHMM. This will require either a GTF or BED (recommended) file to demarcate the positions of genes. Additionally, you will need tab-delimited, binarized mark files, of the format:
+```
+E003    chrX
+DNase   H3K27ac H3K9ac  ...       H2A.Z
+0       0       0       ...       1
+0       1       1       ...       0
+0       0       1       ...       0
+```
+
+*Note: We do not recommend using a GTF file, as they tend to be very different in structure and are difficult to parse. We have retained the function used for ChromGene for posterity, but have disabled the function, and leave it to the user to create an appropriate BED file. A simple command to create such a BED file could look something like: `zcat gencode.v29.annotation.gtf.gz | awk 'BEGIN {OFS="\t"} ($3 == "gene") && ($0 ~ /protein_coding/) {split($10, gid, "\""); split($14, name, "\""); print $1, $4, $5, name[2], gid[2], $7}' > gencode.v29.annotation.bed`* 
+
+Usage:
 ```
 python generate_chromgene_input_files.py \
 annotation [path to bed or gtf file] \
