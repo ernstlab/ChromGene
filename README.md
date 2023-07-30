@@ -23,7 +23,7 @@ DNase   H3K27ac H3K9ac  ...       H2A.Z
 0       0       1       ...       0
 ```
 
-*Note: We do not recommend using a GTF file, as they tend to be very different in structure and are difficult to parse. We have retained the function used for ChromGene for posterity, but have disabled the function, and leave it to the user to create an appropriate BED file. A simple command to create such a BED file could look something like: `zcat gencode.v29.annotation.gtf.gz | awk 'BEGIN {OFS="\t"} ($3 == "gene") && ($0 ~ /protein_coding/) {split($10, gid, "\""); split($14, name, "\""); print $1, $4, $5, name[2], gid[2], $7}' > gencode.v29.annotation.bed`* 
+*Note: We do not recommend using a GTF file, as they tend to be very different in structure and are difficult to parse. We have retained the function used for ChromGene for posterity, but have disabled the function, and leave it to the user to create an appropriate BED file. A simple command to create such a BED file could look something like:* `zcat gencode.v29.annotation.gtf.gz | awk 'BEGIN {OFS="\t"} ($3 == "gene") && ($0 ~ /protein_coding/) {split($10, gid, "\""); split($14, name, "\""); print $1, $4, $5, name[2], gid[2], $7}' > gencode.v29.annotation.bed`
 
 Usage:
 ```
