@@ -21,7 +21,7 @@ Download the ChromGene code to your directory of choice (e.g., `git clone https:
 
 ### 1. Create ChromGene binary files
 #### 1a. Download or generate ChromHMM binarized mark files
-This is a tab-delimited text file of the format:
+This follows the process described at (https://www.ncbi.nlm.nih.gov/pmc/articles/PMC5945550/). This is a tab-delimited text file of the format:
 ```
 E003    chrX
 DNase   H3K27ac H3K9ac  ...       H2A.Z
@@ -37,7 +37,9 @@ If you would like to use your own data for ChromGene, you will have to create yo
 #### 1b. Create ChromGene binary files using ChromHMM binary files
 Next, create the ChromGene input binary files to use on top of ChromHMM. This will require either a GTF or BED (recommended) file to demarcate the positions of genes. Additionally, you will the need tab-delimited, binarized mark files taken from step 1a.
 
-*Note: We do not recommend using a GTF file, as they tend to be very different in structure and are difficult to parse. We have retained the function used for ChromGene for posterity, but have disabled the function, and leave it to the user to create an appropriate BED file. A simple command to create such a BED file could look something like:* `zcat gencode.v29.annotation.gtf.gz | awk 'BEGIN {OFS="\t"} ($3 == "gene") && ($0 ~ /protein_coding/) {split($10, gid, "\""); split($14, name, "\""); print $1, $4, $5, name[2], gid[2], $7}' > gencode.v29.annotation.bed`
+***Note:*** *We do not recommend using a GTF file, as they tend to be very different in structure and are difficult to parse. We have retained the function used for ChromGene for posterity, but have disabled the function, and leave it to the user to create an appropriate BED file. A simple command to create such a BED file could look something like:* `zcat gencode.v29.annotation.gtf.gz | awk 'BEGIN {OFS="\t"} ($3 == "gene") && ($0 ~ /protein_coding/) {split($10, gid, "\""); split($14, name, "\""); print $1, $4, $5, name[2], gid[2], $7}' > gencode.v29.annotation.bed`
+
+***Note on hyperparameters:*** *We determined the number of components (`--num-components`) and states per component (`--num-states`) using the process descibed in our manuscript. This is likely a good starting place for you, but you may want to increase or decrease the number of components or states for your specific use case. If you have more marks than 12, you may want to use more states and/or components, and if you have fewer than 6 marks, you may want to use fewer states and/or components.*
 
 Usage (note that argument names in brackets such as `[--no-binary]` are optional, and arguments themselves in brackets such as `--num-states [3]` denote default arguments:
 ```
