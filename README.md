@@ -30,7 +30,7 @@ DNase   H3K27ac H3K9ac  ...       H2A.Z
 0       0       1       ...       0
 ```
 
-We used imputed ChromHMM mark files for 129 epigenomes, found at https://egg2.wustl.edu/roadmap/data/byFileType/chromhmmSegmentations/binaryChmmInput/imputed12marks/binaryData/.
+We used imputed ChromHMM mark files for 127 epigenomes, found at https://egg2.wustl.edu/roadmap/data/byFileType/chromhmmSegmentations/binaryChmmInput/imputed12marks/binaryData/.
 
 If you would like to use your own data for ChromGene, you will have to create your own ChromHMM binarized mark files, following the ChromHMM command BinarizeBed, BinarizeBam, or BinarizeSignal (http://compbio.mit.edu/ChromHMM/). 
 
